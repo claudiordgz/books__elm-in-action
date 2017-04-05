@@ -1,7 +1,9 @@
 module PhotoGroove exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html.Attributes exposing (id, class, classList, src, name, type_, title)
+import Json.Decode exposing (string, int, list, Decoder)
+import Json.Decode.Pipeline exposing (decode, required, optional)
 import Html.Events exposing (onClick)
 import Array exposing (Array)
 import Random
@@ -18,7 +20,10 @@ type ThumbnailSize
     | Large
 
 type alias Photo =
-    { url : String }
+    { url : String
+    , size : Int
+    , title : String
+    }
 
 
 type alias Model =
@@ -28,6 +33,18 @@ type alias Model =
     , chosenSize: ThumbnailSize
     }
 
+
+photoDecoder : Decoder Photo
+photoDecoder =
+    decode buildPhoto
+        |> required "url" string
+        |> required "size" int
+        |> optional "title" string "(untitled)"
+
+
+buildPhoto : String -> Int -> String -> Photo
+buildPhoto url size title =
+    { url = url, size = size, title = title }
 
 photoArray : Array Photo
 photoArray =
@@ -46,8 +63,8 @@ initialModel =
 
 initialCmd : Cmd Msg
 initialCmd =
-    "/books__elm-in-action/photos/list"
-        |> Http.getString
+    list photoDecoder
+        |> Http.get "/books__elm-in-action/photos/list.json"
         |> Http.send LoadPhotos
 
 type Msg
@@ -55,7 +72,7 @@ type Msg
     | SelectByIndex Int
     | SurpriseMe
     | SetSize ThumbnailSize
-    | LoadPhotos (Result Http.Error String)
+    | LoadPhotos (Result Http.Error (List Photo))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -85,19 +102,18 @@ update msg model =
                 ( model, Random.generate SelectByIndex randomPhotoPicker)
         SetSize size ->
             ({ model | chosenSize = size }, Cmd.none)
-        LoadPhotos (Ok responseStr) ->
-                    let
-                        urls =
-                            String.split "," responseStr
-                        photos =
-                            List.map Photo urls
-                    in
-                        ( { model
-                              | photos = photos
-                              , selectedUrl = List.head urls }, Cmd.none )
+        LoadPhotos (Ok photos) ->
+                    ( { model
+                          | photos = photos
+                          , selectedUrl = Maybe.map .url (List.head photos)
+                          }
+                       , Cmd.none
+                    )
 
         LoadPhotos (Err _) ->
-                    ( model, Cmd.none )
+                    ( { model
+                          | loadingError = Just "Error! (Try turning it off and on again?)" }
+                          , Cmd.none )
 
 
 viewSizeChooser : ThumbnailSize -> Html Msg
@@ -133,6 +149,7 @@ viewThumbnail : Maybe String -> Photo -> Html Msg
 viewThumbnail selectedUrl thumbnail =
     img
         [ src (urlPrefix ++ thumbnail.url)
+        , title (thumbnail.title ++ " [" ++ toString thumbnail.size ++ "KB]")
         , classList [ ( "selected", selectedUrl == Just thumbnail.url ) ]
         , onClick ( SelectByUrl thumbnail.url )
         ]
