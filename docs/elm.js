@@ -9478,7 +9478,7 @@ var _user$project$PhotoGroove$LoadPhotos = function (a) {
 var _user$project$PhotoGroove$initialCmd = A2(
 	_elm_lang$http$Http$send,
 	_user$project$PhotoGroove$LoadPhotos,
-	_elm_lang$http$Http$getString('/photos/list'));
+	_elm_lang$http$Http$getString('/books__elm-in-action/photos/list'));
 var _user$project$PhotoGroove$SetSize = function (a) {
 	return {ctor: 'SetSize', _0: a};
 };

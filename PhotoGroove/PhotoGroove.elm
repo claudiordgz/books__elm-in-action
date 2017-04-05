@@ -46,7 +46,7 @@ initialModel =
 
 initialCmd : Cmd Msg
 initialCmd =
-    "/photos/list"
+    "/books__elm-in-action/photos/list"
         |> Http.getString
         |> Http.send LoadPhotos
 
