@@ -5,7 +5,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Array exposing (Array)
 import Random
-
+import Http
 
 urlPrefix : String
 urlPrefix =
@@ -23,7 +23,8 @@ type alias Photo =
 
 type alias Model =
     { photos : List Photo
-    , selectedUrl : String
+    , selectedUrl : Maybe String
+    , loadingError : Maybe String
     , chosenSize: ThumbnailSize
     }
 
@@ -36,39 +37,66 @@ photoArray =
 initialModel : Model
 initialModel =
     { photos =
-        [ { url = "1.jpeg" }
-        , { url = "2.jpeg" }
-        , { url = "3.jpeg" }
-        ]
-    , selectedUrl = "1.jpeg"
+        []
+    , selectedUrl = Nothing
+    , loadingError = Nothing
     , chosenSize = Medium
     }
 
+
+initialCmd : Cmd Msg
+initialCmd =
+    "//photos/list"
+        |> Http.getString
+        |> Http.send LoadPhotos
 
 type Msg
     = SelectByUrl String
     | SelectByIndex Int
     | SurpriseMe
     | SetSize ThumbnailSize
-
-
-randomPhotoPicker : Random.Generator Int
-randomPhotoPicker =
-    Random.int 0 (Array.length photoArray - 1)
+    | LoadPhotos (Result Http.Error String)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SelectByUrl url ->
-            ({ model | selectedUrl = url }, Cmd.none)
+            ({ model | selectedUrl = Just url }, Cmd.none)
         SelectByIndex index ->
-            ({ model | selectedUrl = getPhotoUrl index }, Cmd.none)
+            let
+                newSelectedPhoto : Maybe Photo
+                newSelectedPhoto =
+                    Array.get index (Array.fromList model.photos)
+
+                newSelectedUrl : Maybe String
+                newSelectedUrl =
+                    model.photos
+                        |> Array.fromList
+                        |> Array.get index
+                        |> Maybe.map .url
+             in
+                ({ model | selectedUrl = newSelectedUrl }, Cmd.none)
         SurpriseMe  ->
-            ({ model | selectedUrl = "2.jpeg" }, Random.generate SelectByIndex randomPhotoPicker)
+            let
+                randomPhotoPicker =
+                    Random.int 0 (List.length model.photos - 1)
+            in
+                ( model, Random.generate SelectByIndex randomPhotoPicker)
         SetSize size ->
             ({ model | chosenSize = size }, Cmd.none)
-       
+        LoadPhotos (Ok responseStr) ->
+                    let
+                        urls =
+                            String.split "," responseStr
+                        photos =
+                            List.map Photo urls
+                    in
+                        ( { model | photos = photos}, Cmd.none )
+
+        LoadPhotos (Err _) ->
+                    ( model, Cmd.none )
+
 
 viewSizeChooser : ThumbnailSize -> Html Msg
 viewSizeChooser size =
@@ -78,13 +106,13 @@ viewSizeChooser size =
         ]
 
 
-getPhotoUrl : Int -> String
+getPhotoUrl : Int -> Maybe String
 getPhotoUrl index =
     case Array.get index photoArray of
         Just photo ->
-            photo.url
+            Just photo.url
         Nothing ->
-            ""
+            Nothing
 
 
 sizeToString : ThumbnailSize -> String
@@ -99,16 +127,25 @@ sizeToString size =
         Large ->
             "large"
 
-viewThumbnail : String -> Photo -> Html Msg
+viewThumbnail : Maybe String -> Photo -> Html Msg
 viewThumbnail selectedUrl thumbnail =
     img
         [ src (urlPrefix ++ thumbnail.url)
-        , classList [ ( "selected", selectedUrl == thumbnail.url ) ]
+        , classList [ ( "selected", selectedUrl == Just thumbnail.url ) ]
         , onClick ( SelectByUrl thumbnail.url )
         ]
         []
 
 
+viewLarge : Maybe String -> Html Msg
+viewLarge maybeUrl =
+    case maybeUrl of
+        Nothing ->
+            text ""
+
+        Just url ->
+            img [ class "large", src (urlPrefix ++ "large/" ++ url)] []
+           
 
 view : Model -> Html Msg
 view model =
@@ -122,19 +159,15 @@ view model =
             (List.map viewSizeChooser [ Small, Medium, Large ])
         , div [ id "thumbnails", class (sizeToString model.chosenSize) ]
             (List.map (viewThumbnail model.selectedUrl) model.photos)
-        , img
-            [ class "large"
-            , src (urlPrefix ++ "large/" ++ model.selectedUrl)
-            ]
-            []
+        , viewLarge model.selectedUrl
         ]
 
 
 main : Program Never Model Msg
 main =
     Html.program
-        { init = ( initialModel, Cmd.none )
+        { init = ( initialModel, initialCmd )
         , view = view
         , update = update
-        , subscriptions = ( \model -> Sub.none )
+        , subscriptions = ( \_ -> Sub.none )
         }
