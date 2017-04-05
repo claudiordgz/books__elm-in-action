@@ -9579,7 +9579,10 @@ var _user$project$PhotoGroove$update = F2(
 						ctor: '_Tuple2',
 						_0: _elm_lang$core$Native_Utils.update(
 							model,
-							{photos: photos}),
+							{
+								photos: photos,
+								selectedUrl: _elm_lang$core$List$head(urls)
+							}),
 						_1: _elm_lang$core$Platform_Cmd$none
 					};
 				} else {

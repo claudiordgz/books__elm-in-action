@@ -92,7 +92,9 @@ update msg model =
                         photos =
                             List.map Photo urls
                     in
-                        ( { model | photos = photos}, Cmd.none )
+                        ( { model
+                              | photos = photos
+                              , selectedUrl = List.head urls }, Cmd.none )
 
         LoadPhotos (Err _) ->
                     ( model, Cmd.none )
