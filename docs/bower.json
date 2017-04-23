@@ -1,0 +1,22 @@
+{
+  "name": "books__elm-in-action",
+  "homepage": "https://github.com/claudiordgz/books__elm-in-action",
+  "authors": [
+    "claudiordgz <claudio.rdgz@gmail.com>"
+  ],
+  "description": "Repo for the project in Book Elm in Action",
+  "main": "index.html",
+  "keywords": [
+    "Elm",
+    "Web",
+    "Components"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
