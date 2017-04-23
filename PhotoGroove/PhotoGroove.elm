@@ -1,7 +1,7 @@
 module PhotoGroove exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (id, class, classList, src, name, type_, title)
+import Html.Attributes as Attr exposing (id, class, classList, src, max, name, type_, title)
 import Json.Decode exposing (string, int, list, Decoder)
 import Json.Decode.Pipeline exposing (decode, required, optional)
 import Html.Events exposing (onClick)
@@ -164,7 +164,23 @@ viewLarge maybeUrl =
 
         Just url ->
             img [ class "large", src (urlPrefix ++ "large/" ++ url)] []
-           
+
+
+
+paperSlider : List (Attribute msg) -> List (Html msg) -> Html msg
+paperSlider =
+    node "paper-slider"
+
+
+
+viewFilter : String -> Int -> Html Msg
+viewFilter name magnitude =
+    div [ class "filter-slider" ]
+        [ label [] [ text name ]
+        , paperSlider [ Attr.max "11" ] []
+        , label [] [ text (toString magnitude) ]
+        ]
+
 
 view : Model -> Html Msg
 view model =
@@ -173,6 +189,11 @@ view model =
         , button
             [ onClick SurpriseMe ]
             [ text "Surprise Me!" ]
+        , div [ class "filters" ]
+            [ viewFilter "Hue" 0 
+            , viewFilter "Ripple" 0
+            , viewFilter "Noise" 0
+            ]
         , h3 [] [ text "Thumbnail Size:" ]
         , div [ id "choose-size" ]
             (List.map viewSizeChooser [ Small, Medium, Large ])
