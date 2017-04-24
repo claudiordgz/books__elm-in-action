@@ -1,4 +1,4 @@
-module PhotoGroove exposing (..)
+port module PhotoGroove exposing (..)
 
 import Html exposing (..)
 import Html.Attributes as Attr exposing (id, class, classList, src, max, name, type_, title)
@@ -18,6 +18,14 @@ type ThumbnailSize
     = Small
     | Medium
     | Large
+
+port setFilters : FilterOptions -> Cmd msg
+
+type alias FilterOptions =
+    { url : String
+    , filters: List { name : String, amount: Float }
+    }
+
 
 type alias Photo =
     { url : String
@@ -84,11 +92,28 @@ type Msg
     | LoadPhotos (Result Http.Error (List Photo))
 
 
+applyFilters: Model -> ( Model, Cmd Msg )
+applyFilters model =
+    case model.selectedUrl of
+        Just selectedUrl ->
+            let
+                filters = [ { name = "Hue", amount = toFloat model.hue / 11 }
+                          , { name = "Ripple", amount = toFloat model.ripple / 11 }
+                          , { name = "Noise", amount = toFloat model.noise / 11 }
+                          ]
+                url = urlPrefix ++ "large/" ++ selectedUrl
+            in
+                ( model, setFilters { url = url, filters = filters } )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SelectByUrl url ->
-            ({ model | selectedUrl = Just url }, Cmd.none)
+            applyFilters { model | selectedUrl = Just url }
         SelectByIndex index ->
             let
                 newSelectedPhoto : Maybe Photo
@@ -102,7 +127,7 @@ update msg model =
                         |> Array.get index
                         |> Maybe.map .url
              in
-                ({ model | selectedUrl = newSelectedUrl }, Cmd.none)
+                applyFilters { model | selectedUrl = newSelectedUrl }
         SurpriseMe  ->
             let
                 randomPhotoPicker =
@@ -112,23 +137,21 @@ update msg model =
         SetSize size ->
             ({ model | chosenSize = size }, Cmd.none)
         LoadPhotos (Ok photos) ->
-                    ( { model
-                          | photos = photos
-                          , selectedUrl = Maybe.map .url (List.head photos)
-                          }
-                       , Cmd.none
-                    )
-
+                    applyFilters
+                        { model
+                            | photos = photos
+                            , selectedUrl = Maybe.map .url (List.head photos)
+                        }
         LoadPhotos (Err _) ->
                     ( { model
                           | loadingError = Just "Error! (Try turning it off and on again?)" }
                           , Cmd.none )
         SetHue hue ->
-            ( { model | hue = hue }, Cmd.none )
+            applyFilters { model | hue = hue }
         SetRipple ripple ->
-            ( { model | ripple = ripple }, Cmd.none )
+            applyFilters { model | ripple = ripple }
         SetNoise noise ->
-            ( { model | noise = noise }, Cmd.none )
+            applyFilters { model | noise = noise }
 
 
 
@@ -187,7 +210,7 @@ viewLarge maybeUrl =
             text ""
 
         Just url ->
-            img [ class "large", src (urlPrefix ++ "large/" ++ url)] []
+            canvas [ id "main-canvas", class "large" ] []
 
 
 paperSlider : List (Attribute msg) -> List (Html msg) -> Html msg
