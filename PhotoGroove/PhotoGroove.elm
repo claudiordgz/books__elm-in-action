@@ -21,6 +21,8 @@ type ThumbnailSize
 
 port setFilters : FilterOptions -> Cmd msg
 
+port statusChanges : (String -> msg) -> Sub msg
+
 type alias FilterOptions =
     { url : String
     , filters: List { name : String, amount: Float }
@@ -36,6 +38,7 @@ type alias Photo =
 
 type alias Model =
     { photos : List Photo
+    , status : String
     , selectedUrl : Maybe String
     , loadingError : Maybe String
     , chosenSize: ThumbnailSize
@@ -66,6 +69,7 @@ initialModel : Model
 initialModel =
     { photos =
         []
+    , status = ""
     , selectedUrl = Nothing
     , loadingError = Nothing
     , chosenSize = Medium
@@ -87,6 +91,7 @@ type Msg
     | SetRipple Int
     | SetNoise Int
     | SelectByIndex Int
+    | SetStatus String
     | SurpriseMe
     | SetSize ThumbnailSize
     | LoadPhotos (Result Http.Error (List Photo))
@@ -112,6 +117,8 @@ applyFilters model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        SetStatus status ->
+            ( { model | status = status }, Cmd.none )
         SelectByUrl url ->
             applyFilters { model | selectedUrl = Just url }
         SelectByIndex index ->
@@ -234,6 +241,7 @@ view model =
         , button
             [ onClick SurpriseMe ]
             [ text "Surprise Me!" ]
+        , div [ class "status" ] [ text model.status ]
         , div [ class "filters" ]
             [ viewFilter "Hue" SetHue model.hue
             , viewFilter "Ripple" SetRipple model.ripple
@@ -248,11 +256,20 @@ view model =
         ]
 
 
-main : Program Never Model Msg
+init : Float -> ( Model, Cmd Msg )
+init flags =
+    let
+        status =
+            "Initializing Pasta v"  ++ toString flags
+    in
+        ( { initialModel | status = status }, initialCmd)
+
+
+main : Program Float Model Msg
 main =
-    Html.program
-        { init = ( initialModel, initialCmd )
+    Html.programWithFlags
+        { init = init
         , view = view
         , update = update
-        , subscriptions = ( \_ -> Sub.none )
+        , subscriptions = ( \_ -> statusChanges SetStatus )
         }
